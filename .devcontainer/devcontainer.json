@@ -1,0 +1,15 @@
+{
+  "name": "Net-Debug-DevContainer",
+  "dockerComposeFile": ["../docker-compose.yml"],
+  "service": "debug",
+  "workspaceFolder": "/workspace",
+  "runServices": ["debug"],
+  "shutdownAction": "stopCompose",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.shell.linux": "/bin/sh"
+      }
+    }
+  }
+}
