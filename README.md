@@ -5,13 +5,22 @@
 
 # ネットワークデバッグツール チュートリアル集
 
-## 1. netcat (nc)
+## 0. このコンテナの使い方
 
-### インストール
+各ツールはイメージに同梱済みなので、個別の `apk add` は不要です。
+
 ```sh
-# Alpine Linux
-apk add --no-cache netcat-openbsd
+# シェルに入る（使い捨て）
+docker compose run --rm debug
+
+# 常駐させて exec で入る
+docker compose up -d
+docker compose exec debug sh
 ```
+
+---
+
+## 1. netcat (nc)
 
 ### 基本使い方
 - **ポートリッスン**  
@@ -29,11 +38,6 @@ apk add --no-cache netcat-openbsd
 ---
 
 ## 2. curl
-
-### インストール
-```sh
-apk add --no-cache curl
-```
 
 ### 基本使い方
 - **GET リクエスト**  
@@ -54,11 +58,6 @@ apk add --no-cache curl
 
 ## 3. nmap
 
-### インストール
-```sh
-apk add --no-cache nmap
-```
-
 ### 基本使い方
 ```sh
 # ホストの全ポートスキャン
@@ -71,11 +70,6 @@ nmap -sV -O 192.168.1.10
 
 ## 4. mosquitto-clients
 
-### インストール
-```sh
-apk add --no-cache mosquitto-clients
-```
-
 ### 基本使い方
 ```sh
 # Subscribe
@@ -84,14 +78,12 @@ mosquitto_sub -h localhost -t test/topic
 mosquitto_pub -h localhost -t test/topic -m "hello"
 ```
 
+### ワンポイント
+- TLS (8883) は CA 証明書を指定: `mosquitto_sub -h broker -p 8883 --cafile ca.crt -t test/#`
+
 ---
 
 ## 5. dig / nslookup
-
-### インストール
-```sh
-apk add --no-cache bind-tools
-```
 
 ### 基本使い方
 ```sh
@@ -103,11 +95,6 @@ nslookup example.com
 
 ## 6. ping / traceroute
 
-### インストール
-```sh
-apk add --no-cache iputils traceroute
-```
-
 ### 基本使い方
 ```sh
 ping -c 4 8.8.8.8
@@ -117,11 +104,6 @@ traceroute example.com
 ---
 
 ## 7. tcpdump
-
-### インストール
-```sh
-apk add --no-cache tcpdump
-```
 
 ### 基本使い方
 ```sh
@@ -135,15 +117,100 @@ tcpdump -i eth0 port 1883
 
 ## 8. iperf3
 
-### インストール
-```sh
-apk add --no-cache iperf3
-```
-
 ### 基本使い方
 ```sh
 # サーバ起動 (別ターミナル)
 iperf3 -s
 # クライアント接続
 iperf3 -c localhost -p 5201
+```
+
+---
+
+## 9. socat
+
+nc の上位互換。任意のソケット同士を双方向中継できます。
+
+```sh
+# TCP ポートフォワード (8080 → 内部 80)
+socat TCP-LISTEN:8080,fork,reuseaddr TCP:backend:80
+# 簡易 TCP サーバ (受信を標準出力へ)
+socat TCP-LISTEN:9000,fork -
+# UNIX ソケット ↔ TCP 橋渡し
+socat UNIX-CONNECT:/var/run/app.sock TCP-LISTEN:7000,fork,reuseaddr
+```
+
+---
+
+## 10. mtr
+
+`traceroute` と `ping` を統合し、経路ごとのパケットロス率を継続表示します。
+
+```sh
+# 対話画面
+mtr example.com
+# レポートを N 回分まとめて出力 (CI 向け)
+mtr -rwc 10 example.com
+```
+
+---
+
+## 11. websocat
+
+WebSocket クライアント / サーバ。IoT・リアルタイム系のデバッグに。
+
+```sh
+# 接続して対話送受信
+websocat ws://localhost:8000/ws
+# サーバとして待ち受け、受信をエコー
+websocat -s 8080
+```
+
+---
+
+## 12. openssl
+
+TLS / 証明書まわりのデバッグ。
+
+```sh
+# 接続して証明書チェーンを確認
+openssl s_client -connect example.com:443 -servername example.com
+# サーバ証明書の有効期限だけ表示
+echo | openssl s_client -connect example.com:443 2>/dev/null \
+  | openssl x509 -noout -dates
+```
+
+---
+
+## 13. ip / ss (iproute2)
+
+`ifconfig` / `netstat` のモダン代替。
+
+```sh
+# インターフェイス・アドレス確認
+ip addr
+# ルーティングテーブル
+ip route
+# リッスン中の TCP ソケットとプロセス
+ss -tlnp
+```
+
+---
+
+## 14. jq
+
+`curl` の JSON 出力を整形・抽出。
+
+```sh
+curl -s http://example.com/api/data | jq .
+curl -s http://example.com/api/items | jq '.[].name'
+```
+
+---
+
+## 15. whois
+
+```sh
+whois example.com
+whois 8.8.8.8
 ```
